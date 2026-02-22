@@ -1,4 +1,4 @@
-absl-py==2.4.0
+﻿absl-py==2.4.0
 astunparse==1.6.3
 blinker==1.9.0
 certifi==2026.1.4
@@ -16,13 +16,11 @@ idna==3.11
 itsdangerous==2.2.0
 Jinja2==3.1.6
 joblib==1.5.3
-keras==3.13.2
 libclang==18.1.1
 Markdown==3.10.2
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
-ml_dtypes==0.5.4
 namex==0.1.0
 numpy==2.4.2
 opt_einsum==3.4.0
