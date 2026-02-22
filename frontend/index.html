@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Email Spam Classifier</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <div class="project-header">
+      <div class="project-title">FINAL YEAR PROJECT (CMP 499)</div>
+
+      <div class="project-info">
+        <div class="info-row">
+          <span class="left">Olabisi Onabanjo University</span>
+          <span class="right">Olabintan Yusuf Olatunji</span>
+        </div>
+
+        <div class="info-row">
+          <span class="left">Department of Computer Sciences</span>
+          <span class="right">SCI/22/23/0836</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+    </div>
+
+    <!-- CARD -->
+    <div class="card">
+      <h1>Email Spam Classifier</h1>
+
+      <textarea id="emailText" placeholder="Paste the email content here..."></textarea>
+
+      <div class="row">
+        <button id="btnCheck">Check</button>
+        <button class="secondary" id="btnHam">Random HAM</button>
+        <button class="secondary" id="btnSpam">Random SPAM</button>
+      </div>
+
+      <div class="resultLine" id="resultLine">Result: —</div>
+      <div class="barWrap">
+        <div class="bar" id="confBar"></div>
+      </div>
+
+      <div class="err" id="errBox"></div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
