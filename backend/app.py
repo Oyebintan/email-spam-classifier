@@ -32,19 +32,27 @@ def get_sample_from_csv(label: str, max_rows: int = 2000) -> str:
     if not DATA_PATH.exists():
         return ""
 
-    df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8-sig", on_bad_lines="skip")
-    df = df.dropna(subset=["label", "text"]).copy()
-    df["label"] = pd.to_numeric(df["label"], errors="coerce")
-    df = df.dropna(subset=["label"])
-    df["label"] = df["label"].astype(int)
+    try:
+        df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8-sig", on_bad_lines="skip")
+        print("Columns found:", df.columns.tolist())  # ← shows column names in logs
+        print("Label values:", df["label"].unique()[:10])  # ← shows label values
+        df = df.dropna(subset=["label", "text"]).copy()
+        df["label"] = pd.to_numeric(df["label"], errors="coerce")
+        df = df.dropna(subset=["label"])
+        df["label"] = df["label"].astype(int)
 
-    target = 1 if label == "spam" else 0
-    samples = df[df["label"] == target]["text"].astype(str).tolist()
+        target = 1 if label == "spam" else 0
+        samples = df[df["label"] == target]["text"].astype(str).tolist()
+        print(f"Found {len(samples)} samples for label {target}")  # ← shows count
 
-    if not samples:
+        if not samples:
+            return ""
+
+        return random.choice(samples)
+    except Exception as e:
+        print(f"CSV ERROR: {e}")  # ← prints real error
         return ""
 
-    return random.choice(samples)
 
 
 @app.get("/")
