@@ -32,20 +32,19 @@ def get_sample_from_csv(label: str, max_rows: int = 2000) -> str:
     if not DATA_PATH.exists():
         return ""
 
-    try:
-        df = pd.read_csv(DATA_PATH, nrows=max_rows)
-        df = df.dropna(subset=["label", "text"]).copy()
-        df["label"] = df["label"].astype(int)
+    df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8", on_bad_lines="skip")
+    df = df.dropna(subset=["label", "text"]).copy()
+    df["label"] = pd.to_numeric(df["label"], errors="coerce")
+    df = df.dropna(subset=["label"])
+    df["label"] = df["label"].astype(int)
 
-        target = 1 if label == "spam" else 0
-        samples = df[df["label"] == target]["text"].astype(str).tolist()
+    target = 1 if label == "spam" else 0
+    samples = df[df["label"] == target]["text"].astype(str).tolist()
 
-        if not samples:
-            return ""
-
-        return random.choice(samples)
-    except Exception:
+    if not samples:
         return ""
+
+    return random.choice(samples)
 
 
 @app.get("/")
@@ -91,7 +90,6 @@ def predict():
     try:
         payload = request.get_json(silent=True) or {}
 
-        # accept either "text" or "email"
         text = str(payload.get("text") or payload.get("email") or "").strip()
 
         if not text:
@@ -105,9 +103,9 @@ def predict():
 
         return jsonify(
             {
-                "prediction": label,           # frontend-friendly
-                "label": label,                # backend-friendly
-                "probability": probability,    # probability of spam
+                "prediction": label,
+                "label": label,
+                "probability": probability,
                 "spam_probability": probability,
                 "ham_probability": round(1.0 - probability, 6),
                 "confidence": confidence,
@@ -119,27 +117,24 @@ def predict():
 
 @app.get("/sample")
 def sample():
-    try:
-        label = str(request.args.get("label") or "").strip().lower()
+    label = str(request.args.get("label") or "").strip().lower()
 
-        if label not in ("ham", "spam"):
-            return jsonify({"error": "Use /sample?label=ham or /sample?label=spam"}), 400
+    if label not in ("ham", "spam"):
+        return jsonify({"error": "Use /sample?label=ham or /sample?label=spam"}), 400
 
-        text = get_sample_from_csv(label, max_rows=2000)
+    text = get_sample_from_csv(label, max_rows=2000)
 
-        if not text:
-            return jsonify({"error": "Sample not available"}), 500
+    if not text:
+        return jsonify({"error": "Sample not available"}), 500
 
-        return jsonify({"label": label, "text": text})
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    return jsonify({"label": label, "text": text})
 
 
 def main() -> None:
     port = int(os.getenv("PORT", "8000"))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug)
-    
+
 
 if __name__ == "__main__":
     main()
