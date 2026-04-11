@@ -5,4 +5,4 @@ joblib==1.4.2
 numpy==1.26.4
 pandas==2.2.2
 scikit-learn==1.4.2
-tensorflow-cpu==2.16.1
+tflite-runtime==2.14.0
