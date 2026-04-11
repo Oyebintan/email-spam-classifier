@@ -32,7 +32,7 @@ def get_sample_from_csv(label: str, max_rows: int = 2000) -> str:
     if not DATA_PATH.exists():
         return ""
 
-    df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8", on_bad_lines="skip")
+    df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8-sig", on_bad_lines="skip")
     df = df.dropna(subset=["label", "text"]).copy()
     df["label"] = pd.to_numeric(df["label"], errors="coerce")
     df = df.dropna(subset=["label"])
