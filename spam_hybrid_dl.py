@@ -182,7 +182,8 @@ def main() -> None:
     # safety fallback if very few features survive
     if x_train_selected.shape[1] == 0:
         raise ValueError("L1 feature selection removed all features. Increase --l1_c.")
-    if x_train_selected.shape[1] == 1:
+    duplicate_single_feature = x_train_selected.shape[1] == 1
+    if duplicate_single_feature:
         x_train_selected = np.hstack([x_train_selected, x_train_selected])
         x_test_selected = np.hstack([x_test_selected, x_test_selected])
 
@@ -233,6 +234,7 @@ def main() -> None:
         "feature_pipeline": feature_pipeline,
         "l1_selector": l1_selector,
         "label_encoder": encoder,
+        "duplicate_single_feature": duplicate_single_feature,
     }
     joblib.dump(artifact, output_dir / "pipeline.pkl")
 

@@ -15,10 +15,11 @@ class InferenceArtifacts:
     feature_pipeline: Any
     l1_selector: Any
     label_encoder: Any
-    interpreter: tflite.Interpreter   # ← replaces tf.keras.Model
+    interpreter: tflite.Interpreter
     input_index: int
     output_index: int
     artifact_dir: Path
+    duplicate_single_feature: bool = False
 
 
 class SpamPredictor:
@@ -39,8 +40,9 @@ class SpamPredictor:
             x = np.asarray(x, dtype=np.float32)
 
         x_selected = self.art.l1_selector.transform(x).astype(np.float32)
+        if self.art.duplicate_single_feature:
+            x_selected = np.hstack([x_selected, x_selected])
 
-        # ← tflite inference (replaces model.predict)
         self.art.interpreter.set_tensor(self.art.input_index, x_selected)
         self.art.interpreter.invoke()
         proba_spam = float(self.art.interpreter.get_tensor(self.art.output_index).ravel()[0])
@@ -67,7 +69,7 @@ class SpamPredictor:
         out_dir = Path(artifact_dir) if artifact_dir else (project_root / "outputs_dl")
 
         pipeline_path = out_dir / "pipeline.pkl"
-        model_path = out_dir / "model.tflite"   # ← changed from model.keras
+        model_path = out_dir / "model.tflite"
 
         missing_files = [str(p) for p in [pipeline_path, model_path] if not p.exists()]
         if missing_files:
@@ -77,11 +79,11 @@ class SpamPredictor:
         feature_pipeline = pipeline_obj.get("feature_pipeline")
         l1_selector = pipeline_obj.get("l1_selector")
         label_encoder = pipeline_obj.get("label_encoder")
+        duplicate_single_feature = bool(pipeline_obj.get("duplicate_single_feature", False))
 
         if feature_pipeline is None or l1_selector is None:
             raise ValueError("pipeline.pkl is missing required preprocessing objects.")
 
-        # ← load tflite model
         interpreter = tflite.Interpreter(model_path=str(model_path))
         interpreter.allocate_tensors()
         input_index = interpreter.get_input_details()[0]["index"]
@@ -95,4 +97,5 @@ class SpamPredictor:
             input_index=input_index,
             output_index=output_index,
             artifact_dir=out_dir,
+            duplicate_single_feature=duplicate_single_feature,
         )
