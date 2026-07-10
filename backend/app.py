@@ -19,6 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "spam.csv"
 
 _predictor = None
+_sample_cache: dict[str, list] | None = None
 
 
 def get_predictor() -> SpamPredictor:
@@ -28,31 +29,46 @@ def get_predictor() -> SpamPredictor:
     return _predictor
 
 
-def get_sample_from_csv(label: str, max_rows: int = 2000) -> str:
-    if not DATA_PATH.exists():
+def _normalize_label_column(series: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce")
+    text = series.astype(str).str.strip().str.lower().map({"spam": 1, "ham": 0})
+    return numeric.fillna(text)
+
+
+def _load_sample_cache() -> dict[str, list]:
+    global _sample_cache
+    if _sample_cache is not None:
+        return _sample_cache
+
+    cache: dict[str, list] = {"ham": [], "spam": []}
+
+    if DATA_PATH.exists():
+        try:
+            df = pd.read_csv(
+                DATA_PATH,
+                usecols=["text", "label"],
+                encoding="utf-8-sig",
+                on_bad_lines="skip",
+            )
+            df = df.dropna(subset=["label", "text"]).copy()
+            df["label"] = _normalize_label_column(df["label"])
+            df = df.dropna(subset=["label"])
+            df["label"] = df["label"].astype(int)
+
+            for label_name, target in (("ham", 0), ("spam", 1)):
+                cache[label_name] = df[df["label"] == target]["text"].astype(str).tolist()
+        except Exception as e:
+            app.logger.warning("Failed to load samples from CSV: %s", e)
+
+    _sample_cache = cache
+    return cache
+
+
+def get_sample_from_csv(label: str) -> str:
+    samples = _load_sample_cache().get(label, [])
+    if not samples:
         return ""
-
-    try:
-        df = pd.read_csv(DATA_PATH, nrows=max_rows, encoding="utf-8-sig", on_bad_lines="skip")
-        print("Columns found:", df.columns.tolist())  # ← shows column names in logs
-        print("Label values:", df["label"].unique()[:10])  # ← shows label values
-        df = df.dropna(subset=["label", "text"]).copy()
-        df["label"] = pd.to_numeric(df["label"], errors="coerce")
-        df = df.dropna(subset=["label"])
-        df["label"] = df["label"].astype(int)
-
-        target = 1 if label == "spam" else 0
-        samples = df[df["label"] == target]["text"].astype(str).tolist()
-        print(f"Found {len(samples)} samples for label {target}")  # ← shows count
-
-        if not samples:
-            return ""
-
-        return random.choice(samples)
-    except Exception as e:
-        print(f"CSV ERROR: {e}")  # ← prints real error
-        return ""
-
+    return random.choice(samples)
 
 
 @app.get("/")
@@ -130,7 +146,7 @@ def sample():
     if label not in ("ham", "spam"):
         return jsonify({"error": "Use /sample?label=ham or /sample?label=spam"}), 400
 
-    text = get_sample_from_csv(label, max_rows=2000)
+    text = get_sample_from_csv(label)
 
     if not text:
         return jsonify({"error": "Sample not available"}), 500
