@@ -1,3 +1,4 @@
+import json
 import os
 import random
 from pathlib import Path
@@ -17,9 +18,19 @@ CORS(app)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "spam.csv"
+METRICS_PATH = BASE_DIR.parent / "outputs_dl" / "metrics.json"
+
+METRIC_INFO = {
+    "accuracy": ("Accuracy", "(TP + TN) / (TP + TN + FP + FN)"),
+    "precision": ("Precision", "TP / (TP + FP)"),
+    "recall": ("Recall", "TP / (TP + FN)"),
+    "f1": ("F1-Score", "2 × (Precision × Recall) / (Precision + Recall)"),
+    "roc_auc": ("ROC-AUC", "Area under ROC curve across all classification thresholds"),
+}
 
 _predictor = None
 _sample_cache: dict[str, list] | None = None
+_metrics_cache: dict[str, float] | None = None
 
 
 def get_predictor() -> SpamPredictor:
@@ -71,6 +82,17 @@ def get_sample_from_csv(label: str) -> str:
     return random.choice(samples)
 
 
+def get_metrics() -> dict[str, float]:
+    global _metrics_cache
+    if _metrics_cache is None:
+        if METRICS_PATH.exists():
+            with open(METRICS_PATH) as f:
+                _metrics_cache = json.load(f)
+        else:
+            _metrics_cache = {}
+    return _metrics_cache
+
+
 @app.get("/")
 def home():
     return jsonify(
@@ -81,6 +103,7 @@ def home():
                 "predict": "/predict",
                 "sample_ham": "/sample?label=ham",
                 "sample_spam": "/sample?label=spam",
+                "metrics": "/metrics/<accuracy|precision|recall|f1|roc_auc>",
             },
         }
     )
@@ -152,6 +175,22 @@ def sample():
         return jsonify({"error": "Sample not available"}), 500
 
     return jsonify({"label": label, "text": text})
+
+
+@app.get("/metrics/<key>")
+def metrics(key: str):
+    key = key.strip().lower()
+
+    if key not in METRIC_INFO:
+        return jsonify({"error": f"Unknown metric '{key}'. Use one of: {', '.join(METRIC_INFO)}"}), 400
+
+    values = get_metrics()
+
+    if key not in values:
+        return jsonify({"error": "Metrics not available."}), 500
+
+    label, formula = METRIC_INFO[key]
+    return jsonify({"metric": label, "value": float(values[key]), "formula": formula})
 
 
 def main() -> None:
